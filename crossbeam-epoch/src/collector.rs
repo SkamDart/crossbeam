@@ -199,6 +199,7 @@ mod tests {
         .unwrap();
     }
 
+    #[cfg(not(feature = "sanitize"))] // TODO: assertions failed due to tsan is slow
     #[test]
     fn incremental() {
         const COUNT: usize = 100_000;

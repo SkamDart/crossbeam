@@ -1,7 +1,9 @@
 #!/bin/bash
 
-cd "$(dirname "$0")"/../crossbeam-skiplist
 set -ex
+
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+cd "$script_dir"/../crossbeam-skiplist
 
 export RUSTFLAGS="-D warnings"
 
@@ -12,4 +14,9 @@ if [[ "$RUST_VERSION" == "nightly"* ]]; then
     cargo test --features nightly
 
     RUSTDOCFLAGS=-Dwarnings cargo doc --no-deps --all-features
+
+    # Run sanitizers
+    # https://github.com/crossbeam-rs/crossbeam/issues/614
+    export ASAN_OPTIONS="detect_leaks=0"
+    "$script_dir"/san.sh --features nightly
 fi
