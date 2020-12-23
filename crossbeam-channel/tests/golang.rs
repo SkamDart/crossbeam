@@ -1485,14 +1485,95 @@ mod chan_test {
     }
 }
 
-// https://github.com/golang/go/blob/master/test/closedchan.go
+// https://github.com/golang/go/blob/master/test/closedchan.goru
 mod closedchan {
     // TODO
 }
 
 // https://github.com/golang/go/blob/master/src/runtime/chanbarrier_test.go
 mod chanbarrier_test {
-    // TODO
+    use super::*;
+
+    trait GoError {
+        fn error(&self) -> &'static str;
+    }
+
+    struct Empty {}
+
+    struct Response {}
+
+    struct MyError {}
+
+    impl Error {
+        fn error() -> String {
+            "".to_string()
+        }
+    }
+
+    fn doRequest(use_select: bool) -> Result<Box<Response>, MyError> {
+        struct Async {
+            response: Option<Box<Response>>,
+            err: MyError,
+        }
+
+        let ch = make::<Box<Async>>(0);
+        let done = make::<Empty>(0);
+
+        if use_select {
+            go!(ch, done, {
+                select! {
+                    
+                }
+            });
+        } else {
+            go!(ch, {
+                ch.send(Async{
+                    response: None,
+                    err: MyError{},
+                })
+            });
+        }
+        let r = ch.recv().unwrap();
+        thread::yield_now();
+        r
+    }
+
+    #[test]
+    fn chan_send_select_barrier() {
+        test_chan_send_barrier(true);
+    }
+
+    #[test]
+    fn chan_send_barrier() {
+        test_chan_send_barrier(false);
+    }
+
+    fn test_chan_send_barrier(use_select: bool) {
+        let mut wg = WaitGroup::new();
+        let mut global_mu = Arc<Mutex<Vec<u8>>>::new();
+
+        let outer = 100;
+        let inner = 100000;
+
+        for i in 0..outer {
+            wg.add(1);
+            go!(wg, {
+                defer! { wg.done(); }
+                let mut garbage = vec![];
+                for j in 0..inner {
+                    if doRequest(use_select).is_err() {
+                        panic!(1);
+                    }
+                    garbage = todo!();
+                }
+
+                let mut global = global_mu.lock().unwrap();
+                global = garbage;
+                drop(global);
+            });
+        }
+        wg.wait();
+    }
 }
 
 // https://github.com/golang/go/blob/master/src/runtime/race/testdata/chan_test.go
